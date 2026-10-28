@@ -1,0 +1,31 @@
+{
+	"workRoot": "G:\\AgentWork",
+	"git": "C:\\Program Files\\Git\\cmd\\git.exe",
+	"dashboard": { "host": "127.0.0.1", "port": 7788 },
+	"escalation": ["dsh", "claude", "codex"],
+	"agents": {
+		"dsh": {
+			"install": "%LOCALAPPDATA%\\Programs\\DeepSeek Harness",
+			"concurrency": 2,
+			"maxAttempts": 2,
+			"timeoutMinutes": 20,
+			"keyFile": "secrets\\deepseek.key",
+			"dailyTokenBudget": 3000000
+		},
+		"claude": {
+			"enabled": true,
+			"concurrency": 1,
+			"maxAttempts": 2,
+			"timeoutMinutes": 30,
+			"quotaPauseMinutes": 30
+		},
+		"codex": {
+			"enabled": true,
+			"concurrency": 1,
+			"maxAttempts": 1,
+			"timeoutMinutes": 40,
+			"quotaPauseMinutes": 30
+		}
+	},
+	"projects": {}
+}

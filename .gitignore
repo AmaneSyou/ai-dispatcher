@@ -1,0 +1,9 @@
+node_modules/
+# AI 干活用的工具（pnpm、Rust 等），按本机安装，不入库
+tools/
+# 打包出来的分享用压缩包
+release/
+# 本机配置含路径和预算，不入库；模板见 dispatcher.config.example.json
+dispatcher.config.json
+# dispatch shortcut 按本机路径生成
+bin/launch.vbs

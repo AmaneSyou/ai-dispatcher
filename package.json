@@ -1,0 +1,14 @@
+{
+	"name": "ai-dispatcher",
+	"private": true,
+	"version": "0.2.0",
+	"description": "本地 AI 任务调度器：DSH 跑批量任务，Claude/Codex 负责疑难与复核，人负责最终验收",
+	"type": "module",
+	"engines": {
+		"node": ">=24"
+	},
+	"scripts": {
+		"start": "node --disable-warning=ExperimentalWarning src/cli.ts run",
+		"test": "node --disable-warning=ExperimentalWarning --test \"test/*.test.ts\""
+	}
+}

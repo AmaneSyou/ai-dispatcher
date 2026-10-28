@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="dispatcher-token" content="__DISPATCHER_TOKEN__">
+<title>AI 调度器</title>
+<link rel="icon" href="/favicon.ico">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header class="top">
+	<div class="brand"><img src="/favicon.ico" alt="" width="22" height="22"><span>AI 调度器</span></div>
+	<nav id="tabs" aria-label="页面">
+		<button type="button" data-tab="board" class="on">任务</button>
+		<button type="button" data-tab="new">新建任务</button>
+		<button type="button" data-tab="quota">额度</button>
+		<button type="button" data-tab="settings">设置</button>
+		<button type="button" data-tab="check">环境检查</button>
+		<button type="button" data-tab="log">日志</button>
+		<button type="button" data-tab="help">帮助</button>
+	</nav>
+	<div class="right">
+		<span id="live" class="pill">连接中…</span>
+		<button type="button" id="quit" class="btn ghost danger">退出调度器</button>
+	</div>
+</header>
+
+<main>
+	<section id="tab-board" class="tab on">
+		<div id="agentStrip" class="strip"></div>
+		<p id="firstHint" class="panel firsthint" hidden>第一次用？先看 <button type="button" class="link" data-goto-help="h-start">帮助 → 三分钟上手</button>，或者到“设置 → 项目”点“创建演示项目”试一个任务。想了解一次复杂任务从立项到验收怎么走，看 <button type="button" class="link" data-goto-help="h-flow">完整流程示例</button>。</p>
+		<div id="board" class="board"></div>
+	</section>
+
+	<section id="tab-new" class="tab">
+		<form id="newTask" class="panel form" autocomplete="off">
+			<h2>新建任务</h2>
+			<p class="hint">写得越具体，便宜的 AI 越容易一次做对。任务会在独立的副本里完成，不会直接改动你的项目，最后由你决定是否接受。</p>
+			<div class="row two">
+				<label>项目
+					<select id="f-project" required></select>
+				</label>
+				<label>交给谁
+					<select id="f-agent">
+						<option value="auto">自动（先让 AI 判断难度再分配，判断者在“设置”里选）</option>
+						<option value="dsh">DSH（便宜，适合简单、重复的活）</option>
+						<option value="claude">Claude（复杂代码、调试、审查）</option>
+						<option value="codex">Codex（架构、疑难问题）</option>
+					</select>
+				</label>
+			</div>
+			<p id="noProject" class="warnbox" hidden>还没有登记项目。可以先到“设置 → 项目”里添加，或者 <button type="button" class="link" id="makeDemo">创建一个演示项目</button> 试试。</p>
+			<label>标题
+				<input id="f-title" required maxlength="120" placeholder="例如：给标签筛选加上“全部清除”按钮">
+			</label>
+			<label>任务说明
+				<textarea id="f-spec" required rows="8" placeholder="要做什么、改哪里、做到什么程度算完成。&#10;例如：在 src/text.js 实现 slugify，让 test/text.test.js 全部通过，不要修改测试。"></textarea>
+			</label>
+			<div class="row two">
+				<label>允许修改的文件 <span class="opt">每行一个，留空表示不限（受保护文件除外）</span>
+					<textarea id="f-allow" rows="3" placeholder="src/**"></textarea>
+				</label>
+				<label>禁止修改的文件 <span class="opt">每行一个，通常填测试，防止 AI 改测试蒙混过关</span>
+					<textarea id="f-readonly" rows="3" placeholder="test/**"></textarea>
+				</label>
+			</div>
+			<fieldset class="subset">
+				<legend>子代理 <span class="opt">每家单独设置，只在这家处理这个任务时生效（例如 DSH 失败升级给 Claude，用的是 Claude 的设置）。量大但简单的活适合开 DSH；Claude / Codex 的子代理很费额度</span></legend>
+				<div class="row three">
+					<label>DSH<select id="f-sub-dsh" class="f-sub" data-agent="dsh"></select></label>
+					<label>Claude<select id="f-sub-claude" class="f-sub" data-agent="claude"></select></label>
+					<label>Codex <span class="opt">每个约多 5 万输入 token</span><select id="f-sub-codex" class="f-sub" data-agent="codex"></select></label>
+				</div>
+			</fieldset>
+			<fieldset class="subset">
+				<legend>大任务</legend>
+				<label class="inline"><input type="checkbox" id="f-split">先拆分成小任务</label>
+				<p class="hint">适合大任务：先让一个 AI 读代码、列出小任务清单，你看过（可以改）并批准后才开始做。勾选后，上面的“交给谁”和子代理设置都是给小任务用的。</p>
+				<div class="row two" id="splitOpts" hidden>
+					<label>由谁来拆分
+						<select id="f-planner">
+							<option value="codex">Codex（架构、整体规划）</option>
+							<option value="claude">Claude</option>
+							<option value="dsh">DSH（便宜，但拆得可能粗糙）</option>
+						</select>
+					</label>
+					<div>
+					<label class="inline"><input type="checkbox" id="f-automerge">每个小任务验收通过后自动合并进项目</label>
+					<p class="hint">不勾就要你逐个点“合并到项目”。有先后关系的小任务，要等前一项合并后才开始。自动合并同样先复检，可以撤销。</p>
+				</div>
+				</div>
+			</fieldset>
+			<div class="row two">
+				<label>最多轮数 <span class="opt">留空用设置里的默认值</span>
+					<input id="f-max" type="number" min="1" max="5" placeholder="默认">
+				</label>
+				<div class="actions end"><button type="submit" class="btn primary">加入队列</button></div>
+			</div>
+		</form>
+	</section>
+
+	<section id="tab-quota" class="tab">
+		<div class="actions" style="margin-bottom:12px"><button type="button" class="btn primary" id="quotaRefresh">刷新额度</button><span class="hint" style="margin:0">Claude 每 5 分钟自动刷新一次；手动刷新同样不消耗额度。</span></div>
+		<div id="quotaCards" class="cards"></div>
+		<p class="hint pad">Claude 的额度来自最近一次 Claude 运行；Codex 的额度来自 Codex 的会话记录（包含你在 Codex App 里的使用）。剩余额度降到“设置 → 额度保护”里为你保留的比例时，调度器就不再自动派任务给它，剩下的留给你自己用。</p>
+	</section>
+
+	<section id="tab-settings" class="tab">
+		<div id="settings"></div>
+	</section>
+
+	<section id="tab-check" class="tab">
+		<div class="panel">
+			<h2>环境检查</h2>
+			<p class="hint">检查程序、登录状态、权限和安全补丁。只看状态，不调用模型，不花钱。</p>
+			<button type="button" id="runCheck" class="btn primary">开始检查</button>
+			<ul id="checkList" class="checks"></ul>
+		</div>
+	</section>
+
+	<section id="tab-log" class="tab">
+		<div class="panel"><h2>最近事件</h2><div id="log" class="log"></div></div>
+	</section>
+
+	<section id="tab-help" class="tab">
+		<div class="helpwrap">
+			<nav id="helpToc" class="panel helptoc" aria-label="帮助目录"></nav>
+			<article id="helpBody" class="panel help">正在加载帮助…</article>
+		</div>
+	</section>
+</main>
+
+<dialog id="dlg"><div id="dlgBody"></div></dialog>
+<div id="toast" class="toast" role="status" aria-live="polite" popover="manual"></div>
+<div id="stopped" class="stopped" hidden><div><h2>调度器已退出</h2><p>可以关闭这个窗口了。下次双击桌面上的“AI 调度器”即可重新打开。</p></div></div>
+<script src="/app.js"></script>
+</body>
+</html>
